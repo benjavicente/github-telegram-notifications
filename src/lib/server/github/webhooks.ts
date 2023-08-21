@@ -18,10 +18,15 @@ const getTelegramLinkedMessages = ({
 	entityId: number;
 }) =>
 	prisma.gitHubEntityTelegramMessage.findMany({
-		where: { githubEntityType: entityType, githubEntityId: entityId },
+		where: {
+			githubEntityType: entityType,
+			githubEntityId: entityId,
+			linkedGitHubOrg: {
+				githubOrgId: orgId
+			}
+		},
 		include: {
 			linkedGitHubOrg: {
-				where: { githubOrgId: orgId },
 				include: { telegramLink: true }
 			}
 		}
@@ -41,7 +46,6 @@ githubApp.webhooks.on('discussion.created', async ({ payload }) => {
 
 		await prisma.gitHubEntityTelegramMessage.create({
 			data: {
-				telegramChatId: link.telegramLink.telegramChatId,
 				telegramMessageId: message_id,
 				githubEntityId: payload.discussion.id,
 				githubEntityType: 'discussion',
@@ -64,7 +68,6 @@ githubApp.webhooks.on('issues.opened', async ({ payload }) => {
 
 		await prisma.gitHubEntityTelegramMessage.create({
 			data: {
-				telegramChatId: link.telegramLink.telegramChatId,
 				telegramMessageId: message_id,
 				githubEntityId: payload.issue.id,
 				githubEntityType: 'issue',
@@ -85,7 +88,7 @@ githubApp.webhooks.on('issue_comment.created', async ({ payload }) => {
 
 	for (const msg of messagesToEdit) {
 		await telegramBot.api.editMessageText(
-			msg.telegramChatId,
+			msg.linkedGitHubOrg.telegramLink.telegramChatId,
 			msg.telegramMessageId,
 			`Issue de <a href="${payload.issue.user.html_url}">${payload.issue.user.login}</a>: <a href="${payload.issue.html_url}">${payload.issue.title}</a><br>Último comentario de ${payload.comment.user.login}: <a href="${payload.comment.html_url}">${payload.comment.body}</a>`
 		);
@@ -103,7 +106,7 @@ githubApp.webhooks.on('discussion_comment.created', async ({ payload }) => {
 
 	for (const msg of messagesToEdit) {
 		await telegramBot.api.editMessageText(
-			msg.telegramChatId,
+			msg.linkedGitHubOrg.telegramLink.telegramChatId,
 			msg.telegramMessageId,
 			`Discusión de <a href="${payload.discussion.user.html_url}">${payload.discussion.user.login}</a>: <a href="${payload.discussion.html_url}">${payload.discussion.title}</a><br>Último comentario de ${payload.comment.user.login}: <a href="${payload.comment.html_url}">${payload.comment.body}</a>`
 		);
